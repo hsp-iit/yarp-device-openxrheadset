@@ -7,7 +7,6 @@
  */
 
 #include <impl/OpenXrInterfaceImpl.h>
-#include <OpenXrInterface.h>
 
 //#define DEBUG_RENDERING
 //#define DEBUG_RENDERING_LOCATION
@@ -1167,7 +1166,7 @@ bool OpenXrInterface::prepareFbBodyTracking()
         joint.filterType = PoseFilterType::NONE;
         // We get the poses in play space
         joint.parentFrame = "";
-        std::string joint_name = m_pimpl->getFBBodyJointName(static_cast<XrBodyJointFB>(i));
+        std::string joint_name = m_pimpl->getFBBodyJointName(static_cast<XrFullBodyJointMETA>(i));
 		joint.name = "fb_body_" + joint_name;
     }
 

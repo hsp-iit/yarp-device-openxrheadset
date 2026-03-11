@@ -252,7 +252,7 @@ public:
 
     std::string getFingerName(XrHandJointEXT fingerIndex);
 
-	std::string getFBBodyJointName(XrBodyJointFB jointIndex);
+	std::string getFBBodyJointName(XrFullBodyJointMETA jointIndex);
 
     // DATA
 

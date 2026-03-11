@@ -554,10 +554,10 @@ std::string OpenXrInterface::Implementation::getFingerName(XrHandJointEXT finger
     return output;
 }
 
-std::string OpenXrInterface::Implementation::getFBBodyJointName(XrBodyJointFB jointIndex)
+std::string OpenXrInterface::Implementation::getFBBodyJointName(XrFullBodyJointMETA jointIndex)
 {
     std::string output;
-    switch (static_cast<XrFullBodyJointMETA>(jointIndex))
+    switch (jointIndex)
     {
     case XR_FULL_BODY_JOINT_ROOT_META:
         output = "root";
