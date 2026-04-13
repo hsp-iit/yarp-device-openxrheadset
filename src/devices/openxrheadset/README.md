@@ -44,7 +44,7 @@ This document lists all the configuration parameters parsed by the `OpenXrHeadse
 | `hide_window` | bool (flag) | `true` if `use_native_quad_layers` is set, `false` otherwise | If set (or set to `true`), hides the desktop mirror window. |
 | `render_in_play_space` | bool (flag) | `false` | If set (or set to `true`), renders in the play space instead of the view reference space. |
 | `no_gaze` | bool (flag) | `false` | If set (or set to `true`), disables gaze tracking. |
-| `force_use_gaze` | bool (flag) | `false` | If set (or set to `true`), forces the use of gaze tracking even if the runtime reports that the system does not support eye gaze interaction. Has no effect if `no_gaze` is set. |
+| `force_use_gaze` | bool (flag) | `false` | If set (or set to `true`), forces the use of gaze tracking even if the runtime reports that the system does not support eye gaze interaction. Device won't start if both `no_gaze` and this flag are set. |
 | `no_expressions` | bool (flag) | `false` | If set (or set to `true`), disables facial expression tracking. |
 | `no_hand_tracking` | bool (flag) | `false` | If set (or set to `true`), disables hand tracking. |
 | `no_fb_body_tracking` | bool (flag) | `false` | If set (or set to `true`), disables Meta (Facebook) body tracking. |
@@ -112,11 +112,11 @@ The `gui_elements` parameter specifies the number of GUI overlay elements. For e
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `width` | double | **Yes** | — | Width of the GUI quad layer, in meters. |
-| `height` | double | **Yes** | — | Height of the GUI quad layer, in meters. |
-| `x` | double | **Yes** | — | X position of the GUI quad layer. |
-| `y` | double | **Yes** | — | Y position of the GUI quad layer. |
-| `z` | double | **Yes** | — | Z position of the GUI quad layer. Forced to be negative and at least `0.01` in absolute value. |
+| `width` | double | **Yes** | â€” | Width of the GUI quad layer, in meters. |
+| `height` | double | **Yes** | â€” | Height of the GUI quad layer, in meters. |
+| `x` | double | **Yes** | â€” | X position of the GUI quad layer. |
+| `y` | double | **Yes** | â€” | Y position of the GUI quad layer. |
+| `z` | double | **Yes** | â€” | Z position of the GUI quad layer. Forced to be negative and at least `0.01` in absolute value. |
 | `visibility` | string | No | `"both"` | Which eye(s) the layer is visible to. Allowed values: `"left"`, `"right"`, `"both"`, `"none"`. |
 | `port_id` | string | No | `"gui_<i>"` (lowercase group name) | The port name suffix for receiving images. Full port name: `<prefix>/<port_id>`. |
 | `follow_eyes` | bool (flag) | No | `false` | If set (or set to `true`), the GUI element follows the eye gaze direction. |
@@ -137,11 +137,11 @@ The `labels` parameter specifies the number of text label elements. For each lab
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `width` | double | **Yes** | — | Width of the label quad layer, in meters. |
-| `height` | double | **Yes** | — | Height of the label quad layer, in meters. |
-| `x` | double | **Yes** | — | X position of the label quad layer. |
-| `y` | double | **Yes** | — | Y position of the label quad layer. |
-| `z` | double | **Yes** | — | Z position of the label quad layer. Forced to be negative and at least `0.01` in absolute value. |
+| `width` | double | **Yes** | â€” | Width of the label quad layer, in meters. |
+| `height` | double | **Yes** | â€” | Height of the label quad layer, in meters. |
+| `x` | double | **Yes** | â€” | X position of the label quad layer. |
+| `y` | double | **Yes** | â€” | Y position of the label quad layer. |
+| `z` | double | **Yes** | â€” | Z position of the label quad layer. Forced to be negative and at least `0.01` in absolute value. |
 | `port_id` | string | No | `"label_<i>"` (lowercase group name) | The port name suffix. Full port name: `<prefix>/<port_id>`. |
 | `prefix` | string | No | `""` | Text prefix prepended to the received label string. |
 | `suffix` | string | No | `""` | Text suffix appended to the received label string. |
@@ -171,11 +171,11 @@ The `slides` parameter specifies the number of slide (image) elements. For each 
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `width` | double | **Yes** | — | Width of the slide quad layer, in meters. |
-| `height` | double | **Yes** | — | Height of the slide quad layer, in meters. |
-| `x` | double | **Yes** | — | X position of the slide quad layer. |
-| `y` | double | **Yes** | — | Y position of the slide quad layer. |
-| `z` | double | **Yes** | — | Z position of the slide quad layer. Forced to be negative and at least `0.01` in absolute value. |
+| `width` | double | **Yes** | â€” | Width of the slide quad layer, in meters. |
+| `height` | double | **Yes** | â€” | Height of the slide quad layer, in meters. |
+| `x` | double | **Yes** | â€” | X position of the slide quad layer. |
+| `y` | double | **Yes** | â€” | Y position of the slide quad layer. |
+| `z` | double | **Yes** | â€” | Z position of the slide quad layer. Forced to be negative and at least `0.01` in absolute value. |
 | `port_id` | string | No | `"slide_<i>"` (lowercase group name) | The port name suffix. Full port name: `<prefix>/<port_id>`. |
 | `slides_path` | string | No | `"./"` | Path to the directory containing the slide images. |
 | `initial_slide` | string | No | `""` | Name of the initial slide image to display. Empty string means no initial image. |
@@ -196,11 +196,11 @@ The `custom_poses` parameter specifies the number of custom pose definitions. Fo
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `name` | string | **Yes** | — | The name of the custom pose frame. |
-| `parent_frame` | string | **Yes** | — | The parent frame to which this custom pose is relative. |
-| `euler_angles` | string | **Yes** | — | A 3-character string specifying the Euler angles parametrization (e.g., `"YXZ"`). Each character must be `x`, `y`, or `z` (case-insensitive). |
-| `relative_position` | list of 3 values | **Yes** | — | Relative position offset `(x y z)`. Each element is either a float value or `"*"` (wildcard, meaning the position on that axis is taken from the parent). |
-| `relative_rotation` | list of 3 values | **Yes** | — | Relative rotation offset as Euler angles. Each element is either a float value (in radians) or `"*"` (wildcard, meaning the rotation on that axis is taken from the parent). |
+| `name` | string | **Yes** | â€” | The name of the custom pose frame. |
+| `parent_frame` | string | **Yes** | â€” | The parent frame to which this custom pose is relative. |
+| `euler_angles` | string | **Yes** | â€” | A 3-character string specifying the Euler angles parametrization (e.g., `"YXZ"`). Each character must be `x`, `y`, or `z` (case-insensitive). |
+| `relative_position` | list of 3 values | **Yes** | â€” | Relative position offset `(x y z)`. Each element is either a float value or `"*"` (wildcard, meaning the position on that axis is taken from the parent). |
+| `relative_rotation` | list of 3 values | **Yes** | â€” | Relative rotation offset as Euler angles. Each element is either a float value (in radians) or `"*"` (wildcard, meaning the rotation on that axis is taken from the parent). |
 | `static_pose` | bool (flag) | No | `false` | If set (or set to `true`), the pose is static. When `true`, all `relative_position` and `relative_rotation` entries must be numeric (no wildcards). |
 
 > **Note on masks:** In `relative_position` and `relative_rotation`, a float value sets a fixed offset, while `"*"` inherits the corresponding component from the tracked parent frame.
