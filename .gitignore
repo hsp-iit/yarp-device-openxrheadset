@@ -13,3 +13,6 @@ build/*
 .vs/
 CmakeSettings.json
 .vscode
+
+# Mine
+build*

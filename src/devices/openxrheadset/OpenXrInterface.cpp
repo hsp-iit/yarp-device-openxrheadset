@@ -2004,6 +2004,7 @@ bool OpenXrInterface::initialize(const OpenXrInterfaceSettings &settings)
     m_pimpl->use_expressions = settings.useExpressions;
     m_pimpl->use_hand_tracking = settings.useHandTracking;
 	m_pimpl->use_fb_body_tracking = settings.useFbBodyTracking;
+    m_pimpl->input_type = settings.inputType;
     m_pimpl->head_filter_type = settings.headPoseFilterType;
     m_pimpl->hands_filter_type = settings.handsPoseFilterType;
     m_pimpl->htc_trackers_filter_type = settings.trackersPoseFilterType;
@@ -2253,6 +2254,12 @@ std::string OpenXrInterface::currentRightHandInteractionProfile() const
 
 void OpenXrInterface::getButtons(std::vector<bool> &buttons) const
 {
+    if (m_pimpl->input_type == OpenXrInputType::HANDS)
+    {
+        buttons.clear();
+        return;
+    }
+
     size_t numberOfButtons = 0;
     for (auto& topLevelpath : m_pimpl->top_level_paths)
     {
@@ -2275,6 +2282,12 @@ void OpenXrInterface::getButtons(std::vector<bool> &buttons) const
 
 void OpenXrInterface::getAxes(std::vector<float> &axes) const
 {
+    if (m_pimpl->input_type == OpenXrInputType::HANDS)
+    {
+        axes.clear();
+        return;
+    }
+
     size_t numberOfAxes = 0;
     for (auto& topLevelpath : m_pimpl->top_level_paths)
     {
@@ -2297,6 +2310,12 @@ void OpenXrInterface::getAxes(std::vector<float> &axes) const
 
 void OpenXrInterface::getThumbsticks(std::vector<Eigen::Vector2f> &thumbsticks) const
 {
+    if (m_pimpl->input_type == OpenXrInputType::HANDS)
+    {
+        thumbsticks.clear();
+        return;
+    }
+
     size_t numberOfThumbsticks = 0;
     for (auto& topLevelpath : m_pimpl->top_level_paths)
     {
@@ -2319,20 +2338,24 @@ void OpenXrInterface::getThumbsticks(std::vector<Eigen::Vector2f> &thumbsticks) 
 
 void OpenXrInterface::getAllPoses(std::vector<NamedPoseVelocity> &additionalPoses) const
 {
+    bool strictHands = m_pimpl->input_type == OpenXrInputType::HANDS;
     size_t numberOfPoses = 0;
     numberOfPoses += 3; //This is because the head and the hands are added manually
-    for (size_t topLevelIndex = 0; topLevelIndex <  m_pimpl->top_level_paths.size(); ++topLevelIndex)
+    if (!strictHands)
     {
-        if (topLevelIndex < 2) //Left and right hands are already considered with leftHandPose() and rightHandPose()
+        for (size_t topLevelIndex = 0; topLevelIndex <  m_pimpl->top_level_paths.size(); ++topLevelIndex)
         {
-            if (m_pimpl->top_level_paths[topLevelIndex].currentActions().poses.size() > 1) //The first element is the one considerd by leftHandPose() and rightHandPose()
+            if (topLevelIndex < 2) //Left and right hands are already considered with leftHandPose() and rightHandPose()
             {
-                numberOfPoses += m_pimpl->top_level_paths[topLevelIndex].currentActions().poses.size() - 1;
+                if (m_pimpl->top_level_paths[topLevelIndex].currentActions().poses.size() > 1) //The first element is the one considerd by leftHandPose() and rightHandPose()
+                {
+                    numberOfPoses += m_pimpl->top_level_paths[topLevelIndex].currentActions().poses.size() - 1;
+                }
             }
-        }
-        else
-        {
-            numberOfPoses += m_pimpl->top_level_paths[topLevelIndex].currentActions().poses.size();
+            else
+            {
+                numberOfPoses += m_pimpl->top_level_paths[topLevelIndex].currentActions().poses.size();
+            }
         }
     }
 
@@ -2355,26 +2378,51 @@ void OpenXrInterface::getAllPoses(std::vector<NamedPoseVelocity> &additionalPose
     auto& left_arm = additionalPoses[poseIndex];
     left_arm.name = m_pimpl->leftHandPoseName;
     left_arm.filterType = m_pimpl->hands_filter_type;
-    left_arm.pose = leftHandPose();
-    left_arm.velocity = leftHandVelocity();
+    if (strictHands && m_pimpl->use_hand_tracking &&
+        m_pimpl->leftHandJointPoses.size() > XR_HAND_JOINT_WRIST_EXT)
+    {
+        const auto& wrist = m_pimpl->leftHandJointPoses[XR_HAND_JOINT_WRIST_EXT];
+        const auto& palm = m_pimpl->leftHandJointPoses[XR_HAND_JOINT_PALM_EXT];
+        left_arm.pose = wrist.pose.positionValid && wrist.pose.rotationValid ? wrist.pose : palm.pose;
+        left_arm.velocity = OpenXrInterface::Velocity();
+    }
+    else
+    {
+        left_arm.pose = leftHandPose();
+        left_arm.velocity = leftHandVelocity();
+    }
     poseIndex++;
 
     auto& right_arm = additionalPoses[poseIndex];
     right_arm.name = m_pimpl->rightHandPoseName;
     right_arm.filterType = m_pimpl->hands_filter_type;
-    right_arm.pose = rightHandPose();
-    right_arm.velocity = rightHandVelocity();
+    if (strictHands && m_pimpl->use_hand_tracking &&
+        m_pimpl->rightHandJointPoses.size() > XR_HAND_JOINT_WRIST_EXT)
+    {
+        const auto& wrist = m_pimpl->rightHandJointPoses[XR_HAND_JOINT_WRIST_EXT];
+        const auto& palm = m_pimpl->rightHandJointPoses[XR_HAND_JOINT_PALM_EXT];
+        right_arm.pose = wrist.pose.positionValid && wrist.pose.rotationValid ? wrist.pose : palm.pose;
+        right_arm.velocity = OpenXrInterface::Velocity();
+    }
+    else
+    {
+        right_arm.pose = rightHandPose();
+        right_arm.velocity = rightHandVelocity();
+    }
     poseIndex++;
 
-    for (size_t topLevelIndex = 0; topLevelIndex < m_pimpl->top_level_paths.size(); ++topLevelIndex)
+    if (!strictHands)
     {
-        std::vector<PoseAction>& posesList = m_pimpl->top_level_paths[topLevelIndex].currentActions().poses;
-        // Skip the first pose for left and right hands (already considered)
-        // since the first two top level paths are reserved to left and right hand respectively
-        for (size_t i = (topLevelIndex < 2) ? 1 : 0; i < posesList.size(); ++i)
+        for (size_t topLevelIndex = 0; topLevelIndex < m_pimpl->top_level_paths.size(); ++topLevelIndex)
         {
-            additionalPoses[poseIndex] = posesList[i];
-            poseIndex++;
+            std::vector<PoseAction>& posesList = m_pimpl->top_level_paths[topLevelIndex].currentActions().poses;
+            // Skip the first pose for left and right hands (already considered)
+            // since the first two top level paths are reserved to left and right hand respectively
+            for (size_t i = (topLevelIndex < 2) ? 1 : 0; i < posesList.size(); ++i)
+            {
+                additionalPoses[poseIndex] = posesList[i];
+                poseIndex++;
+            }
         }
     }
 
