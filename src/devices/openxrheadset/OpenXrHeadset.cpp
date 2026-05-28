@@ -295,10 +295,41 @@ bool yarp::dev::OpenXrHeadset::open(yarp::os::Searchable &cfg)
     m_openXrInterfaceSettings.useExpressions = !noExpressions;
 
     bool noHandTracking = cfg.check("no_hand_tracking") && (cfg.find("no_hand_tracking").isNull() || cfg.find("no_hand_tracking").asBool());
-    m_openXrInterfaceSettings.useHandTracking = !noHandTracking;
+    std::string inputTypeString = cfg.check("input_type", yarp::os::Value("auto")).asString();
+    std::transform(inputTypeString.begin(), inputTypeString.end(), inputTypeString.begin(), ::tolower);
+    if (inputTypeString == "auto")
+    {
+        m_openXrInterfaceSettings.inputType = OpenXrInputType::AUTO;
+        m_openXrInterfaceSettings.useHandTracking = !noHandTracking;
+    }
+    else if (inputTypeString == "hands")
+    {
+        m_openXrInterfaceSettings.inputType = OpenXrInputType::HANDS;
+        m_openXrInterfaceSettings.useHandTracking = true;
+        if (noHandTracking)
+        {
+            yCWarning(OPENXRHEADSET) << "Both input_type=hands and no_hand_tracking were specified. input_type takes priority and hand tracking will stay enabled.";
+        }
+    }
+    else if (inputTypeString == "joysticks")
+    {
+        m_openXrInterfaceSettings.inputType = OpenXrInputType::JOYSTICKS;
+        m_openXrInterfaceSettings.useHandTracking = false;
+        m_openXrInterfaceSettings.useFbBodyTracking = false;
+        yCInfo(OPENXRHEADSET) << "input_type=joysticks selected. Hand tracking and body tracking disabled.";
+    }
+    else
+    {
+        yCError(OPENXRHEADSET) << "Unrecognized input_type:" << inputTypeString << ". Allowed values are: auto, hands, joysticks.";
+        return false;
+    }
 
-	bool noFbBodyTracking = cfg.check("no_fb_body_tracking") && (cfg.find("no_fb_body_tracking").isNull() || cfg.find("no_fb_body_tracking").asBool());
-	m_openXrInterfaceSettings.useFbBodyTracking = !noFbBodyTracking;
+    // Body tracking: disabled automatically for joystick mode, otherwise configurable
+    if (m_openXrInterfaceSettings.inputType != OpenXrInputType::JOYSTICKS)
+    {
+        bool noFbBodyTracking = cfg.check("no_fb_body_tracking") && (cfg.find("no_fb_body_tracking").isNull() || cfg.find("no_fb_body_tracking").asBool());
+        m_openXrInterfaceSettings.useFbBodyTracking = !noFbBodyTracking;
+    }
 
     auto parsePoseFilterType = [](const std::string& str, PoseFilterType& filterType) -> bool
     {
@@ -606,109 +637,111 @@ void yarp::dev::OpenXrHeadset::threadRelease()
 
 void yarp::dev::OpenXrHeadset::run()
 {
-    std::lock_guard<std::mutex> lock(m_mutex);
-
     bool shouldResetJoypadServer = false;
 
-    if (m_openXrInterface.isRunning())
     {
-        if (!m_eyesManager.update()) {
-            yCError(OPENXRHEADSET) << "Failed to update eyes.";
-        }
+        std::lock_guard<std::mutex> lock(m_mutex);
 
-        Eigen::Vector3f leftAngles = EulerAngles::XYZ(m_eyesManager.getLeftEyeDesiredRotation().matrix());
-        Eigen::Vector3f rightAngles = EulerAngles::XYZ(m_eyesManager.getRightEyeDesiredRotation().matrix());
-
-        double averageElevation = (leftAngles[0] + rightAngles[0]) / 2.0;
-        double averageAzimuth = (leftAngles[1] + rightAngles[1]) / 2.0;
-
-        Eigen::Quaternionf averageRotation = Eigen::AngleAxisf(averageElevation, Eigen::Vector3f::UnitX()) *
-            Eigen::AngleAxisf(averageAzimuth, Eigen::Vector3f::UnitY());
-
-        for (GuiParam& gui : m_huds)
+        if (m_openXrInterface.isRunning())
         {
-            if (gui.followEyes)
+            if (!m_eyesManager.update()) {
+                yCError(OPENXRHEADSET) << "Failed to update eyes.";
+            }
+
+            Eigen::Vector3f leftAngles = EulerAngles::XYZ(m_eyesManager.getLeftEyeDesiredRotation().matrix());
+            Eigen::Vector3f rightAngles = EulerAngles::XYZ(m_eyesManager.getRightEyeDesiredRotation().matrix());
+
+            double averageElevation = (leftAngles[0] + rightAngles[0]) / 2.0;
+            double averageAzimuth = (leftAngles[1] + rightAngles[1]) / 2.0;
+
+            Eigen::Quaternionf averageRotation = Eigen::AngleAxisf(averageElevation, Eigen::Vector3f::UnitX()) *
+                Eigen::AngleAxisf(averageAzimuth, Eigen::Vector3f::UnitY());
+
+            for (GuiParam& gui : m_huds)
             {
-                Eigen::Quaternionf newRotation;
-                if (gui.visibility == IOpenXrQuadLayer::Visibility::LEFT_EYE)
+                if (gui.followEyes)
                 {
-                    newRotation = m_eyesManager.getLeftEyeDesiredRotation();
-                }
-                else if (gui.visibility == IOpenXrQuadLayer::Visibility::RIGHT_EYE)
-                {
-                    newRotation = m_eyesManager.getRightEyeDesiredRotation();
-                }
-                else
-                {
-                    newRotation = averageRotation;
+                    Eigen::Quaternionf newRotation;
+                    if (gui.visibility == IOpenXrQuadLayer::Visibility::LEFT_EYE)
+                    {
+                        newRotation = m_eyesManager.getLeftEyeDesiredRotation();
+                    }
+                    else if (gui.visibility == IOpenXrQuadLayer::Visibility::RIGHT_EYE)
+                    {
+                        newRotation = m_eyesManager.getRightEyeDesiredRotation();
+                    }
+                    else
+                    {
+                        newRotation = averageRotation;
+                    }
+
+                    Eigen::Vector3f guiPosition = { gui.x, gui.y, gui.z };
+                    gui.layer.setPose(newRotation * guiPosition, newRotation);
                 }
 
-                Eigen::Vector3f guiPosition = { gui.x, gui.y, gui.z };
-                gui.layer.setPose(newRotation * guiPosition, newRotation);
+                if (!gui.layer.updateTexture()) {
+                    yCError(OPENXRHEADSET) << "Failed to update" << gui.portName << "display texture.";
+                }
             }
 
-            if (!gui.layer.updateTexture()) {
-                yCError(OPENXRHEADSET) << "Failed to update" << gui.portName << "display texture.";
-            }
-        }
-
-        for (LabelLayer& label : m_labels)
-        {
-            if (label.options.followEyes)
+            for (LabelLayer& label : m_labels)
             {
-                Eigen::Vector3f labelPosition = { label.x, label.y, label.z };
-                label.layer.setPosition(averageRotation * labelPosition);
+                if (label.options.followEyes)
+                {
+                    Eigen::Vector3f labelPosition = { label.x, label.y, label.z };
+                    label.layer.setPosition(averageRotation * labelPosition);
+                }
+
+                if (!label.layer.updateTexture()) {
+                    yCError(OPENXRHEADSET) << "Failed to update" << label.options.portName << "label.";
+                }
+            }
+            for (SlideLayer& slide : m_slides)
+            {
+                if (!slide.layer.updateTexture()) {
+                    yCError(OPENXRHEADSET) << "Failed to update" << slide.options.portName << "slide.";
+                }
+            }
+            m_openXrInterface.draw(m_drawableArea);
+
+            size_t previousButtonsSize = m_buttons.size();
+            size_t previousAxesSize = m_axes.size();
+            size_t previousThumbsticksSize = m_thumbsticks.size();
+
+            m_openXrInterface.getButtons(m_buttons);
+            m_openXrInterface.getAxes(m_axes);
+            m_openXrInterface.getThumbsticks(m_thumbsticks);
+
+            if (m_buttons.size() != previousButtonsSize ||
+                m_axes.size() != previousAxesSize ||
+                m_thumbsticks.size() != previousThumbsticksSize)
+            {
+                shouldResetJoypadServer = true;
             }
 
-            if (!label.layer.updateTexture()) {
-                yCError(OPENXRHEADSET) << "Failed to update" << label.options.portName << "label.";
+            m_openXrInterface.getAllPoses(m_posesManager.inputs());
+
+            if (m_openXrInterface.shouldResetLocalReferenceSpace())
+            {
+                //The local reference space has been changed by the user.
+                m_rootFrameRawHRootFrame.position.setZero();
+                m_rootFrameRawHRootFrame.rotation.setIdentity();
             }
+
+            //Publish the transformation from the root frame to the OpenXR root frame
+            m_posesManager.setTransformFromRawToRootFrame(m_rootFrameRawHRootFrame);
+
+            m_posesManager.publishFrames();
+
+            m_expressionsManager.setExpressions(m_openXrInterface.eyeExpressions(), m_openXrInterface.lipExpressions());
+            m_expressionsManager.setGazeInHeadFrame(m_openXrInterface.gazePoseInViewFrame());
         }
-        for (SlideLayer& slide : m_slides)
+        else
         {
-            if (!slide.layer.updateTexture()) {
-                yCError(OPENXRHEADSET) << "Failed to update" << slide.options.portName << "slide.";
-            }
+            close();
+            return;
         }
-        m_openXrInterface.draw(m_drawableArea);
-
-        size_t previousButtonsSize = m_buttons.size();
-        size_t previousAxesSize = m_axes.size();
-        size_t previousThumbsticksSize = m_thumbsticks.size();
-
-        m_openXrInterface.getButtons(m_buttons);
-        m_openXrInterface.getAxes(m_axes);
-        m_openXrInterface.getThumbsticks(m_thumbsticks);
-
-        if (m_buttons.size() != previousButtonsSize ||
-            m_axes.size() != previousAxesSize ||
-            m_thumbsticks.size() != previousThumbsticksSize)
-        {
-            shouldResetJoypadServer = true;
-        }
-
-        m_openXrInterface.getAllPoses(m_posesManager.inputs());
-
-        if (m_openXrInterface.shouldResetLocalReferenceSpace())
-        {
-            //The local reference space has been changed by the user.
-            m_rootFrameRawHRootFrame.position.setZero();
-            m_rootFrameRawHRootFrame.rotation.setIdentity();
-        }
-
-        //Publish the transformation from the root frame to the OpenXR root frame
-        m_posesManager.setTransformFromRawToRootFrame(m_rootFrameRawHRootFrame);
-
-        m_posesManager.publishFrames();
-
-        m_expressionsManager.setExpressions(m_openXrInterface.eyeExpressions(), m_openXrInterface.lipExpressions());
-        m_expressionsManager.setGazeInHeadFrame(m_openXrInterface.gazePoseInViewFrame());
-    }
-    else
-    {
-        close();
-        return;
-    }
+    } // m_mutex released here, before calling startJoypadControlServer()
 
     if (shouldResetJoypadServer && m_autoJoypadControlServer)
     {

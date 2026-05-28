@@ -67,6 +67,13 @@ enum class PoseFilterType
     JUMP_FILTER
 };
 
+enum class OpenXrInputType
+{
+    AUTO,
+    HANDS,
+    JOYSTICKS
+};
+
 struct OpenXrInterfaceSettings
 {
     double posesPredictionInMs{0.0};
@@ -77,6 +84,7 @@ struct OpenXrInterfaceSettings
     bool useExpressions{ true };
     bool useHandTracking{ true };
     bool useFbBodyTracking{ true };
+    OpenXrInputType inputType{ OpenXrInputType::AUTO };
     PoseFilterType headPoseFilterType{ PoseFilterType::JUMP_FILTER };
     PoseFilterType handsPoseFilterType{ PoseFilterType::JUMP_FILTER };
     PoseFilterType trackersPoseFilterType{ PoseFilterType::JUMP_FILTER };

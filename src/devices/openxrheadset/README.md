@@ -43,6 +43,7 @@ This document lists all the configuration parameters parsed by the `OpenXrHeadse
 | `vr_poses_prediction_in_ms` | double | `0.0` | The prediction time for pose tracking, in milliseconds. |
 | `hide_window` | bool (flag) | `true` if `use_native_quad_layers` is set, `false` otherwise | If set (or set to `true`), hides the desktop mirror window. |
 | `render_in_play_space` | bool (flag) | `false` | If set (or set to `true`), renders in the play space instead of the view reference space. |
+| `input_type` | string | `"auto"` | Selects the input source. Allowed values: `"auto"`, `"hands"`, `"joysticks"`. `"hands"` is strict hands-only mode: controller buttons, axes, thumbsticks, and controller poses are not exposed. `"joysticks"` is strict controller-only mode: hand tracking is disabled and hand joints are not published. |
 | `no_gaze` | bool (flag) | `false` | If set (or set to `true`), disables gaze tracking. |
 | `force_use_gaze` | bool (flag) | `false` | If set (or set to `true`), forces the use of gaze tracking even if the runtime reports that the system does not support eye gaze interaction. Device won't start if both `no_gaze` and this flag are set. |
 | `no_expressions` | bool (flag) | `false` | If set (or set to `true`), disables facial expression tracking. |
