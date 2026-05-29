@@ -1527,6 +1527,16 @@ bool OpenXrInterface::updateInteractionProfiles()
                 topLevel.currentInteractionProfile = NO_INTERACTION_PROFILE_TAG;
             }
         }
+
+        if (topLevel.currentInteractionProfile != NO_INTERACTION_PROFILE_TAG &&
+            topLevel.currentInteractionProfile != TOP_LEVEL_NOT_SUPPORTED_TAG &&
+            topLevel.interactionProfileActions.find(topLevel.currentInteractionProfile) == topLevel.interactionProfileActions.end())
+        {
+            yCWarning(OPENXRHEADSET) << "The runtime selected interaction profile"
+                                     << topLevel.currentInteractionProfile
+                                     << "for" << topLevel.stringPath
+                                     << "but no actions were declared for it.";
+        }
     }
 
     forceTrackersInteractionProfile();

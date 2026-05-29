@@ -173,6 +173,7 @@ OpenXrInterface::Velocity XrSpaceVelocityToVelocity(const XrSpaceVelocity &space
 
 void InputActions::clear()
 {
+    poses.clear();
     buttons.clear();
     axes.clear();
     thumbsticks.clear();
