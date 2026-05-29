@@ -707,16 +707,44 @@ void yarp::dev::OpenXrHeadset::run()
             size_t previousButtonsSize = m_buttons.size();
             size_t previousAxesSize = m_axes.size();
             size_t previousThumbsticksSize = m_thumbsticks.size();
+            bool previousHadJoypadLayout = previousButtonsSize > 0 || previousAxesSize > 0 || previousThumbsticksSize > 0;
 
-            m_openXrInterface.getButtons(m_buttons);
-            m_openXrInterface.getAxes(m_axes);
-            m_openXrInterface.getThumbsticks(m_thumbsticks);
+            std::vector<bool> nextButtons;
+            std::vector<float> nextAxes;
+            std::vector<Eigen::Vector2f> nextThumbsticks;
+
+            m_openXrInterface.getButtons(nextButtons);
+            m_openXrInterface.getAxes(nextAxes);
+            m_openXrInterface.getThumbsticks(nextThumbsticks);
+
+            bool currentHadJoypadLayout = nextButtons.size() > 0 || nextAxes.size() > 0 || nextThumbsticks.size() > 0;
+
+            // In joystick mode, if tracking is temporarily lost after a controller layout was discovered,
+            // keep the joypad shape stable and publish neutral values instead of collapsing the ports.
+            if (m_openXrInterfaceSettings.inputType == OpenXrInputType::JOYSTICKS &&
+                !currentHadJoypadLayout &&
+                previousHadJoypadLayout)
+            {
+                std::fill(m_buttons.begin(), m_buttons.end(), false);
+                std::fill(m_axes.begin(), m_axes.end(), 0.0f);
+                std::fill(m_thumbsticks.begin(), m_thumbsticks.end(), Eigen::Vector2f::Zero());
+                currentHadJoypadLayout = true;
+            }
+            else
+            {
+                m_buttons = std::move(nextButtons);
+                m_axes = std::move(nextAxes);
+                m_thumbsticks = std::move(nextThumbsticks);
+            }
 
             if ((m_buttons.size() != previousButtonsSize ||
                 m_axes.size() != previousAxesSize ||
                 m_thumbsticks.size() != previousThumbsticksSize) &&
-                (m_buttons.size() > 0 || m_axes.size() > 0 || m_thumbsticks.size() > 0))
+                (previousHadJoypadLayout || currentHadJoypadLayout))
             {
+                yCInfo(OPENXRHEADSET) << "Joypad layout changed. Buttons:" << previousButtonsSize << "->" << m_buttons.size()
+                                      << "Axes:" << previousAxesSize << "->" << m_axes.size()
+                                      << "Thumbsticks:" << previousThumbsticksSize << "->" << m_thumbsticks.size();
                 shouldResetJoypadServer = true;
             }
 
@@ -739,6 +767,7 @@ void yarp::dev::OpenXrHeadset::run()
         }
         else
         {
+            yCWarning(OPENXRHEADSET) << "OpenXR interface is no longer running. Closing the device thread.";
             close();
             return;
         }
@@ -746,6 +775,7 @@ void yarp::dev::OpenXrHeadset::run()
 
     if (shouldResetJoypadServer && m_autoJoypadControlServer)
     {
+        yCInfo(OPENXRHEADSET) << "Restarting JoypadControlServer after joypad layout change.";
         startJoypadControlServer();
     }
 
