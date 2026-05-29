@@ -712,9 +712,10 @@ void yarp::dev::OpenXrHeadset::run()
             m_openXrInterface.getAxes(m_axes);
             m_openXrInterface.getThumbsticks(m_thumbsticks);
 
-            if (m_buttons.size() != previousButtonsSize ||
+            if ((m_buttons.size() != previousButtonsSize ||
                 m_axes.size() != previousAxesSize ||
-                m_thumbsticks.size() != previousThumbsticksSize)
+                m_thumbsticks.size() != previousThumbsticksSize) &&
+                (m_buttons.size() > 0 || m_axes.size() > 0 || m_thumbsticks.size() > 0))
             {
                 shouldResetJoypadServer = true;
             }
