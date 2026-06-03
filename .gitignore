@@ -16,3 +16,5 @@ CmakeSettings.json
 
 # Mine
 build*
+.pixi/
+dist/
