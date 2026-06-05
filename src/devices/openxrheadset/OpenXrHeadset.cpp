@@ -587,6 +587,24 @@ bool yarp::dev::OpenXrHeadset::threadInit()
         m_thisDevice.give(this, /*own=*/false);
     }
 
+    // In joystick mode, start the JoypadControlServer immediately so that the
+    // joypad ports are created right away, even if no controller is connected yet.
+    // Pre-populate with the oculus touch layout (7 buttons, 4 axes, 2 thumbsticks)
+    // to match Quest 3 controllers, avoiding a server restart on first connect.
+    if (m_openXrInterfaceSettings.inputType == OpenXrInputType::JOYSTICKS
+        && m_autoJoypadControlServer)
+    {
+        // Oculus touch: left(menu,x,y,thumbstick_click) + right(a,b,thumbstick_click)
+        m_buttons = {false, false, false, false, false, false, false};
+        // Oculus touch: left(trigger,squeeze) + right(trigger,squeeze)
+        m_axes = {0.0f, 0.0f, 0.0f, 0.0f};
+        // Oculus touch: left thumbstick + right thumbstick
+        m_thumbsticks = {Eigen::Vector2f::Zero(), Eigen::Vector2f::Zero()};
+
+        yCInfo(OPENXRHEADSET) << "Joystick mode: starting JoypadControlServer immediately.";
+        startJoypadControlServer();
+    }
+
     return true;
 }
 
