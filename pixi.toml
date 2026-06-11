@@ -1,0 +1,65 @@
+[workspace]
+name = "yarp-device-openxrheadset"
+version = "0.0.10"
+description = "OpenXR headset YARP device driver packaged with pixi."
+channels = ["conda-forge", "https://prefix.dev/robotology"]
+platforms = ["win-64"]
+preview = ["pixi-build"]
+
+[dependencies]
+yarp-device-openxrheadset = { path = "." }
+
+[tasks]
+build-package = "pixi build --output-dir dist"
+run-device = { cmd = "yarpdev --device openxrheadset", depends-on = ["build-package"] }
+
+[package]
+name = { workspace = true }
+version = { workspace = true }
+description = { workspace = true }
+license = "BSD-2-Clause"
+license-file = "LICENSE"
+readme = "README.md"
+repository = "https://github.com/hsp-iit/yarp-device-openxrheadset"
+
+[package.build]
+backend = { name = "pixi-build-cmake", version = "0.3.*", channels = ["https://prefix.dev/pixi-build-backends", "conda-forge", "https://prefix.dev/robotology"] }
+
+[package.build-dependencies]
+git = "*"
+
+[package.host-dependencies]
+eigen = "*"
+freetype = "*"
+glew = "*"
+glfw = "*"
+glm = "*"
+idyntree = "*"
+openxr-sdk = "*"
+yarp = "*"
+ycm-cmake-modules = "*"
+
+[package.run-dependencies]
+idyntree = "*"
+openxr-sdk = "*"
+yarp = "*"
+
+[package.build.config]
+compilers = ["cxx"]
+extra-args = [
+  "-DCMAKE_BUILD_TYPE=Release",
+  "-DBUILD_TESTING=OFF",
+]
+extra-input-globs = [
+  "CMakeLists.txt",
+  "LICENSE",
+  "README.md",
+  "src/**/CMakeLists.txt",
+  "src/**/*.cpp",
+  "src/**/*.h",
+  "src/**/*.h.in",
+  "src/**/*.jpg",
+  "src/**/*.png",
+  "src/**/*.shader",
+  "src/**/*.thrift",
+]
