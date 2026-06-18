@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE robot PUBLIC "-//YARP//DTD yarprobotinterface 3.0//EN" "http://www.yarp.it/DTD/yarprobotinterfaceV3.0.dtd">
+ 
+<robot name="cer-realsense-cameras" build="2" portprefix="/test" xmlns:xi="http://www.w3.org/2001/XInclude">
+    <devices>
+        <device xmlns:xi="http://www.w3.org/2001/XInclude" name="openxrheadsetdev" type="openxrheadset">
+            <param name="name">/meta/joypad</param>
+            <param name="split_eye_ports">false</param>
+            <param name="inter_camera_distance">0.093</param>
+            <param name="eye_z_position">-0.7</param>
+            <param name="input_type">joysticks</param>
+            <param name="joypad_control_server_auto">true</param>
+            <param name="vr_period">0.05</param>
+            <param name="pose_check_max_distance">999.0</param>
+            <param name="pose_check_max_angle_rad">999.0</param>
+        </device>
+    </devices>
+</robot>
+ 
