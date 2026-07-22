@@ -587,7 +587,7 @@ bool yarp::dev::OpenXrHeadset::threadInit()
         m_thisDevice.give(this, /*own=*/false);
     }
 
-    // In joystick mode, start the JoypadControlServer immediately so that the
+    // In joystick mode, start the joypadControl_nws_yarp wrapper immediately so that the
     // joypad ports are created right away, even if no controller is connected yet.
     // Pre-populate with the oculus touch layout (7 buttons, 4 axes, 2 thumbsticks)
     // to match Quest 3 controllers, avoiding a server restart on first connect.
@@ -601,7 +601,7 @@ bool yarp::dev::OpenXrHeadset::threadInit()
         // Oculus touch: left thumbstick + right thumbstick
         m_thumbsticks = {Eigen::Vector2f::Zero(), Eigen::Vector2f::Zero()};
 
-        yCInfo(OPENXRHEADSET) << "Joystick mode: starting JoypadControlServer immediately.";
+        yCInfo(OPENXRHEADSET) << "Joystick mode: starting JoypadControl_nws_yarp immediately.";
         startJoypadControlServer();
     }
 
@@ -793,7 +793,7 @@ void yarp::dev::OpenXrHeadset::run()
 
     if (shouldResetJoypadServer && m_autoJoypadControlServer)
     {
-        yCInfo(OPENXRHEADSET) << "Restarting JoypadControlServer after joypad layout change.";
+        yCInfo(OPENXRHEADSET) << "Restarting JoypadControl_nws_yarp after joypad layout change.";
         startJoypadControlServer();
     }
 
@@ -816,7 +816,7 @@ bool yarp::dev::OpenXrHeadset::stopService()
     return this->close();
 }
 
-bool yarp::dev::OpenXrHeadset::getAxisCount(unsigned int &axis_count)
+yarp::dev::ReturnValue yarp::dev::OpenXrHeadset::getAxisCount(size_t &axis_count)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -827,40 +827,40 @@ bool yarp::dev::OpenXrHeadset::getAxisCount(unsigned int &axis_count)
         axis_count += 2 * m_thumbsticks.size();
     }
 
-    return true;
+    return ReturnValue::return_code::return_value_ok;
 }
 
-bool yarp::dev::OpenXrHeadset::getButtonCount(unsigned int &button_count)
+yarp::dev::ReturnValue yarp::dev::OpenXrHeadset::getButtonCount(size_t &button_count)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
     button_count = m_buttons.size();
 
-    return true;
+    return ReturnValue::return_code::return_value_ok;
 }
 
-bool yarp::dev::OpenXrHeadset::getTrackballCount(unsigned int &trackball_count)
+yarp::dev::ReturnValue yarp::dev::OpenXrHeadset::getTrackballCount(size_t &trackball_count)
 {
     trackball_count = 0;
 
-    return true;
+    return ReturnValue::return_code::return_value_ok;
 }
 
-bool yarp::dev::OpenXrHeadset::getHatCount(unsigned int &hat_count)
+yarp::dev::ReturnValue yarp::dev::OpenXrHeadset::getHatCount(size_t &hat_count)
 {
     hat_count = 0; //These are handled as buttons in OpenXR
 
-    return true;
+    return ReturnValue::return_code::return_value_ok;
 }
 
-bool yarp::dev::OpenXrHeadset::getTouchSurfaceCount(unsigned int &touch_count)
+yarp::dev::ReturnValue yarp::dev::OpenXrHeadset::getTouchSurfaceCount(size_t &touch_count)
 {
     touch_count = 0;
 
-    return true;
+    return ReturnValue::return_code::return_value_ok;
 }
 
-bool yarp::dev::OpenXrHeadset::getStickCount(unsigned int &stick_count)
+yarp::dev::ReturnValue yarp::dev::OpenXrHeadset::getStickCount(size_t &stick_count)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -873,10 +873,10 @@ bool yarp::dev::OpenXrHeadset::getStickCount(unsigned int &stick_count)
         stick_count = m_thumbsticks.size();
     }
 
-    return true;
+    return ReturnValue::return_code::return_value_ok;
 }
 
-bool yarp::dev::OpenXrHeadset::getStickDoF(unsigned int stick_id, unsigned int &dof)
+yarp::dev::ReturnValue yarp::dev::OpenXrHeadset::getStickDoF(size_t stick_id, size_t &dof)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -885,53 +885,54 @@ bool yarp::dev::OpenXrHeadset::getStickDoF(unsigned int stick_id, unsigned int &
     if (m_getStickAsAxis)
     {
         yCError(OPENXRHEADSET) << "The sticks are considered as axis, so there are none.";
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
     else if (stick_id >= m_thumbsticks.size())
     {
         yCError(OPENXRHEADSET) << "The stick_id" << stick_id << "is out of bound. Only" << m_thumbsticks.size() << "sticks are available." ;
-        return false;
+        return ReturnValue::return_code::return_value_error_input_out_of_bounds;
     }
 
-    return true;
+    return ReturnValue::return_code::return_value_ok;
 }
 
-bool yarp::dev::OpenXrHeadset::getButton(unsigned int button_id, float &value)
+yarp::dev::ReturnValue yarp::dev::OpenXrHeadset::getButton(size_t button_id, double &value)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
     if (button_id < m_buttons.size())
     {
-        value = m_buttons[button_id];
+        value = m_buttons[button_id] ? 1.0 : 0.0;
     }
     else
     {
         yCError(OPENXRHEADSET) << "Requested button with index" << button_id << ", but there are" << m_buttons.size() << "buttons.";
-        return false;
+        return ReturnValue::return_code::return_value_error_input_out_of_bounds;
     }
 
-    return true;
+    return ReturnValue::return_code::return_value_ok;
 }
 
-bool yarp::dev::OpenXrHeadset::getTrackball(unsigned int /*trackball_id*/, yarp::sig::Vector &value)
+yarp::dev::ReturnValue yarp::dev::OpenXrHeadset::getTrackball(size_t /*trackball_id*/, yarp::dev::TrackballData &value)
 {
-    value.zero();
+    value.x = 0.0;
+    value.y = 0.0;
     yCError(OPENXRHEADSET) << "No trackball are considered in this device.";
-    return false;
+    return ReturnValue::return_code::return_value_error_not_implemented_by_device;
 }
 
-bool yarp::dev::OpenXrHeadset::getHat(unsigned int /*hat_id*/, unsigned char &value)
+yarp::dev::ReturnValue yarp::dev::OpenXrHeadset::getHat(size_t /*hat_id*/, unsigned char &value)
 {
     value = 0;
     yCError(OPENXRHEADSET) << "No hats are considered in this device.";
-    return false;
+    return ReturnValue::return_code::return_value_error_not_implemented_by_device;
 }
 
-bool yarp::dev::OpenXrHeadset::getAxis(unsigned int axis_id, double &value)
+yarp::dev::ReturnValue yarp::dev::OpenXrHeadset::getAxis(size_t axis_id, double &value)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    unsigned int inputId = axis_id;
+    size_t inputId = axis_id;
 
     if (inputId < m_axes.size())
     {
@@ -944,7 +945,7 @@ bool yarp::dev::OpenXrHeadset::getAxis(unsigned int axis_id, double &value)
             inputId -= m_axes.size();
             if (inputId < 2 * m_thumbsticks.size())
             {
-                unsigned int thumbstickId = inputId / 2;
+                size_t thumbstickId = inputId / 2;
 
                 value = m_thumbsticks[thumbstickId][inputId % 2]; //Each thumbstick counts as two axes
             }
@@ -953,59 +954,58 @@ bool yarp::dev::OpenXrHeadset::getAxis(unsigned int axis_id, double &value)
                 yCError(OPENXRHEADSET) << "The axis_id" << axis_id << "is out of bounds. There are"
                                        << m_axes.size() << "axes and" << m_thumbsticks.size()
                                        << "thumbsticks (counting as two axes each).";
-                return false;
+                return ReturnValue::return_code::return_value_error_input_out_of_bounds;
             }
         }
         else
         {
             yCError(OPENXRHEADSET) << "The axis_id" << axis_id << "is out of bounds. There are"
                                    << m_axes.size() << "axes.";
-            return false;
+            return ReturnValue::return_code::return_value_error_input_out_of_bounds;
         }
     }
 
-    return true;
+    return ReturnValue::return_code::return_value_ok;
 }
 
-bool yarp::dev::OpenXrHeadset::getStick(unsigned int stick_id, yarp::sig::Vector &value,
-                                        yarp::dev::IJoypadController::JoypadCtrl_coordinateMode coordinate_mode)
+yarp::dev::ReturnValue yarp::dev::OpenXrHeadset::getStick(size_t stick_id, yarp::dev::StickData &value,
+                                                          yarp::dev::IJoypadController::JoypadCtrl_coordinateMode coordinate_mode)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
     if (m_getStickAsAxis)
     {
         yCError(OPENXRHEADSET) << "The sticks are considered axis, so there are none";
-        return false;
+        return ReturnValue::return_code::return_value_error_method_failed;
     }
 
     if (stick_id < m_thumbsticks.size())
     {
-        value.resize(2);
         if (coordinate_mode == JoypadCtrl_coordinateMode::JypCtrlcoord_POLAR)
         {
-            value[0] = m_thumbsticks[stick_id].norm();
-            value[1] = atan2(m_thumbsticks[stick_id][1], m_thumbsticks[stick_id][0]);
+            value.s1 = m_thumbsticks[stick_id].norm();
+            value.s2 = atan2(m_thumbsticks[stick_id][1], m_thumbsticks[stick_id][0]);
         }
         else
         {
-            value[0] = m_thumbsticks[stick_id][0];
-            value[1] = m_thumbsticks[stick_id][1];
+            value.s1 = m_thumbsticks[stick_id][0];
+            value.s2 = m_thumbsticks[stick_id][1];
         }
     }
     else
     {
         yCError(OPENXRHEADSET) << "The stick_id" << stick_id << "is out of bound. Only" << m_thumbsticks.size() << "sticks are available." ;
-        return false;
+        return ReturnValue::return_code::return_value_error_input_out_of_bounds;
     }
 
-    return true;
+    return ReturnValue::return_code::return_value_ok;
 }
 
-bool yarp::dev::OpenXrHeadset::getTouch(unsigned int /*touch_id*/, yarp::sig::Vector &value)
+yarp::dev::ReturnValue yarp::dev::OpenXrHeadset::getTouch(size_t /*touch_id*/, std::vector<yarp::dev::TouchData> &value)
 {
     value.clear();
     yCError(OPENXRHEADSET) << "No touch devices are considered in this device.";
-    return false;
+    return ReturnValue::return_code::return_value_error_not_implemented_by_device;
 }
 
 std::string yarp::dev::OpenXrHeadset::getLeftHandInteractionProfile()
@@ -1301,17 +1301,15 @@ bool yarp::dev::OpenXrHeadset::startJoypadControlServer()
     {
         std::lock_guard<std::mutex> lock(m_joypadServerMutex);
         yarp::os::Property options;
-        options.put("device", "JoypadControlServer");
+        options.put("device", "JoypadControl_nws_yarp");
         options.put("name", m_prefix);
         options.put("period", getPeriod());
-        options.put("use_separate_ports", true);
-        options.put("stick_as_axis", false);
 
         m_joypadControlServerPtr = std::make_unique<yarp::dev::PolyDriver>();
 
         if (!m_joypadControlServerPtr->open(options))
         {
-            yCError(OPENXRHEADSET) << "Failed to open JoypadControlServer with the following options:" << options.toString();
+            yCError(OPENXRHEADSET) << "Failed to open JoypadControl_nws_yarp with the following options:" << options.toString();
             return false;
         }
 

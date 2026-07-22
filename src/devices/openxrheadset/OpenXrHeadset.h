@@ -70,19 +70,19 @@ public:
     virtual bool stopService() override;
 
     // yarp::dev::IJoypadController methods
-    virtual bool getAxisCount(unsigned int& axis_count) override;
-    virtual bool getButtonCount(unsigned int& button_count) override;
-    virtual bool getTrackballCount(unsigned int& trackball_count) override;
-    virtual bool getHatCount(unsigned int& hat_count) override;
-    virtual bool getTouchSurfaceCount(unsigned int& touch_count) override;
-    virtual bool getStickCount(unsigned int& stick_count) override;
-    virtual bool getStickDoF(unsigned int stick_id, unsigned int& dof) override;
-    virtual bool getButton(unsigned int button_id, float& value) override;
-    virtual bool getTrackball(unsigned int trackball_id, yarp::sig::Vector& value) override;
-    virtual bool getHat(unsigned int hat_id, unsigned char& value) override;
-    virtual bool getAxis(unsigned int axis_id, double& value) override;
-    virtual bool getStick(unsigned int stick_id, yarp::sig::Vector& value, JoypadCtrl_coordinateMode coordinate_mode) override;
-    virtual bool getTouch(unsigned int touch_id, yarp::sig::Vector& value) override;
+    virtual yarp::dev::ReturnValue getAxisCount(size_t& axis_count) override;
+    virtual yarp::dev::ReturnValue getButtonCount(size_t& button_count) override;
+    virtual yarp::dev::ReturnValue getTrackballCount(size_t& trackball_count) override;
+    virtual yarp::dev::ReturnValue getHatCount(size_t& hat_count) override;
+    virtual yarp::dev::ReturnValue getTouchSurfaceCount(size_t& touch_count) override;
+    virtual yarp::dev::ReturnValue getStickCount(size_t& stick_count) override;
+    virtual yarp::dev::ReturnValue getStickDoF(size_t stick_id, size_t& dof) override;
+    virtual yarp::dev::ReturnValue getButton(size_t button_id, double& value) override;
+    virtual yarp::dev::ReturnValue getTrackball(size_t trackball_id, yarp::dev::TrackballData& value) override;
+    virtual yarp::dev::ReturnValue getHat(size_t hat_id, unsigned char& value) override;
+    virtual yarp::dev::ReturnValue getAxis(size_t axis_id, double& value) override;
+    virtual yarp::dev::ReturnValue getStick(size_t stick_id, yarp::dev::StickData& value, JoypadCtrl_coordinateMode coordinate_mode) override;
+    virtual yarp::dev::ReturnValue getTouch(size_t touch_id, std::vector<yarp::dev::TouchData>& value) override;
 
     //OpenXrHeadsetCommands
     /**

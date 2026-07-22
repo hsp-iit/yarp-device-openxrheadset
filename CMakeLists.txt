@@ -71,6 +71,18 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 ### Dependencies
 
+set(YARP_OPENXR_YARP_SOURCE_PREFIX "" CACHE PATH "Install prefix or CMake package directory of a source-built YARP 4")
+if(NOT YARP_OPENXR_YARP_SOURCE_PREFIX AND DEFINED ENV{YARP_OPENXR_YARP_SOURCE_PREFIX})
+    set(YARP_OPENXR_YARP_SOURCE_PREFIX "$ENV{YARP_OPENXR_YARP_SOURCE_PREFIX}" CACHE PATH "Install prefix or CMake package directory of a source-built YARP 4" FORCE)
+endif()
+if(YARP_OPENXR_YARP_SOURCE_PREFIX)
+    if(EXISTS "${YARP_OPENXR_YARP_SOURCE_PREFIX}/YARPConfig.cmake")
+        set(YARP_DIR "${YARP_OPENXR_YARP_SOURCE_PREFIX}" CACHE PATH "Path to the YARP CMake package" FORCE)
+    else()
+        set(CMAKE_PREFIX_PATH "${YARP_OPENXR_YARP_SOURCE_PREFIX};${CMAKE_PREFIX_PATH}")
+    endif()
+endif()
+
 # Temporary set CMAKE_POLICY_VERSION_MINIMUM 3.5 as a workaround
 # for https://github.com/robotology/gz-sim-yarp-plugins/pull/258#issue-2963247728
 # Remove once we drop support for compilation on Ubuntu 22.04 with apt dependencies
@@ -82,12 +94,26 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
     set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 endif()
 
+find_package(YCM REQUIRED)
+find_package(YARP 4.0 COMPONENTS os sig dev math idl_tools QUIET)
+if(NOT YARP_FOUND)
+    message(FATAL_ERROR
+        "YARP 4.0 or newer was not found. YARP 4 is not available as a released "
+        "Pixi/conda package yet, so build and install YARP from the robotology/yarp "
+        "repository, then configure this project with "
+        "-DYARP_OPENXR_YARP_SOURCE_PREFIX=<yarp-install-prefix>, "
+        "-DYARP_DIR=<directory-containing-YARPConfig.cmake>, or "
+        "-DCMAKE_PREFIX_PATH=<yarp-install-prefix>."
+    )
+endif()
+
 # Fetching GLFont for displaying labels
 option(YARP_OPENXR_USES_SYSTEM_GLFont OFF)
 if(YARP_OPENXR_USES_SYSTEM_GLFont)
      find_package(GLFont REQUIRED)
 else()
     include(FetchContent)
+    set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
     FetchContent_Declare(glfont
       GIT_REPOSITORY https://github.com/ami-iit/GLFont
       GIT_TAG master)
@@ -99,8 +125,6 @@ else()
     endif()
 endif()
 
-find_package(YCM REQUIRED)
-find_package(YARP 3.4 COMPONENTS os sig dev math idl_tools REQUIRED)
 find_package(Threads REQUIRED)
 find_package(OpenXR 1.0.20 REQUIRED)
 find_package(glfw3 REQUIRED)
